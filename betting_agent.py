@@ -99,7 +99,6 @@ if colA.button("✅ ชนะ (W)", use_container_width=True, type="primary"):
     st.session_state.step += 1
     if st.session_state.step >= max_steps:
         st.session_state.step = 0
-        # ลูกโป่งขึ้นเฉพาะเมื่อครบเซตจริง ๆ
         st.balloons()
 
 if colB.button("❌ แพ้ (L)", use_container_width=True, type="secondary"):
@@ -139,18 +138,18 @@ with col_m2:
     if st.button("🧠 Box Breathing"):
         st.info("**Box Breathing**: เข้า 4 วินาที → กลั้น 4 → ออก 4 → กลั้น 4 (ทำ 8-10 รอบ)")
 
-# ==================== ตารางประวัติ + แถบสี ====================
+# ==================== ตารางประวัติ + แถบสี (แก้สีใหม่) ====================
 if st.session_state.history:
     df = pd.DataFrame(st.session_state.history)
     
     def highlight_row(row):
         if row['ครบเซต'] == True:
-            return ['background-color: #90EE90'] * len(row)   # เขียว - ครบเซต
+            return ['background-color: #90EE90; color: black'] * len(row)   # เขียว - ครบเซต
         elif row['ผล'] == "แพ้":
-            return ['background-color: #FFB3B3'] * len(row)   # แดง - แพ้
+            return ['background-color: #FFCCCC; color: black'] * len(row)   # แดงอ่อน - แพ้
         else:
-            return ['background-color: #FFF9C4'] * len(row)   # เหลือง - ยังไม่ครบเซต
-    
+            return ['background-color: #FFE6B3; color: black'] * len(row)   # ส้มอ่อน - ยังไม่ครบเซต (แทนเหลือง)
+
     styled_df = df.style.apply(highlight_row, axis=1)
     
     st.subheader("📊 ประวัติการเล่นวันนี้")
