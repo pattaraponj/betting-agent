@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
-import random
 
 st.set_page_config(page_title="AI Betting Agent - พี่เอก", layout="centered", page_icon="🤖")
 st.title("🤖 AI Betting Agent 1-3-2-6 & Paroli")
@@ -121,22 +120,71 @@ if colB.button("❌ แพ้ (L)", use_container_width=True, type="secondary"):
     
     st.session_state.step = 0
 
-# ==================== แมวโกรธ (Angry Cat Effect) ====================
-def show_angry_cat():
+# ==================== แมวโกรธ (แก้บั๊กแล้ว) ====================
+if st.session_state.daily_profit <= daily_stop or st.session_state.consecutive_loss >= 3:
     st.markdown("""
-    <div style="text-align: center; font-size: 60px; animation: float 2s ease-in-out infinite;">
-        😾🐱😿
+    <div style="text-align: center; font-size: 70px; animation: float 1.8s ease-in-out infinite;">
+        😾 😿 🐱
     </div>
     <style>
     @keyframes float {
-        0% { transform: translateY(0); }
-        50% { transform: translateY(-30px); }
-        100% { transform: translateY(0); }
+        0% { transform: translateY(0px); }
+        50% { transform: translateY(-40px); }
+        100% { transform: translateY(0px); }
     }
     </style>
     """, unsafe_allow_html=True)
-    st.error("😾 **แมวโกรธแล้ว!** หยุดเล่นเดี๋ยวนี้!")
+    
+    if st.session_state.daily_profit <= daily_stop:
+        st.error("🚨 ถึง Stop Loss แล้ว! แมวโกรธมาก หยุดเล่นเดี๋ยวนี้")
+    else:
+        st.error("🚨 แพ้ติด 3 ไม้แล้ว! แมวโกรธ หยุดเล่นและพักอย่างน้อย 30 นาที")
 
-# ตรวจสอบเงื่อนไขแสดงแมวโกรธ
-show_cat = False
-cat_message
+# Mindfulness
+st.subheader("🧘 Mindfulness")
+col_m1, col_m2 = st.columns(2)
+with col_m1:
+    if st.button("🌀 Urge Surfing"):
+        st.info("**Urge Surfing**: นึกความอยากเป็นคลื่น → หายใจตามจังหวะ → ปล่อยให้คลื่นลงเอง")
+with col_m2:
+    if st.button("🧠 Box Breathing"):
+        st.info("**Box Breathing**: เข้า 4 วินาที → กลั้น 4 → ออก 4 → กลั้น 4 (ทำ 8-10 รอบ)")
+
+# ตารางประวัติ + สี
+if st.session_state.history:
+    df = pd.DataFrame(st.session_state.history)
+    
+    def highlight_row(row):
+        if row['ครบเซต'] == True:
+            return ['background-color: #90EE90; color: black'] * len(row)
+        elif row['ผล'] == "แพ้":
+            return ['background-color: #FFCCCC; color: black'] * len(row)
+        else:
+            return ['background-color: #FFE6B3; color: black'] * len(row)
+
+    styled_df = df.style.apply(highlight_row, axis=1)
+    
+    st.subheader("📊 ประวัติการเล่นวันนี้")
+    st.dataframe(styled_df, use_container_width=True)
+
+# กราฟทุนสะสม (ล่างสุด)
+if st.session_state.history:
+    df_graph = pd.DataFrame(st.session_state.history)
+    cumulative = [capital]
+    for gain in df_graph['กำไร']:
+        cumulative.append(cumulative[-1] + gain)
+    df_graph['ทุนสะสม'] = cumulative[1:]
+    
+    st.subheader("📈 กราฟทุนสะสมวันนี้")
+    st.line_chart(df_graph.set_index('เวลา')['ทุนสะสม'], use_container_width=True)
+
+# รีเซ็ต
+if st.button("🔄 รีเซ็ตเซสชั่นใหม่"):
+    st.session_state.daily_profit = 0
+    st.session_state.step = 0
+    st.session_state.consecutive_loss = 0
+    st.session_state.history = []
+    st.session_state.session_start_time = datetime.now()
+    st.success("รีเซ็ตเซสชั่นใหม่เรียบร้อย!")
+
+st.caption("💡 เล่นไม่เกิน 60 นาทีต่อเซสชั่น")
