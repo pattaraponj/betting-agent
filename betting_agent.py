@@ -1,18 +1,19 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime
-import plotly.express as px
+from datetime import datetime, timedelta
+import time
 
 st.set_page_config(page_title="AI Betting Agent - พี่เอก", layout="centered", page_icon="🤖")
 st.title("🤖 AI Betting Agent 1-3-2-6 & Paroli")
 st.caption("พี่เอกดูแล | แผน 10,000 → 250,000 | Banker 100%")
 
-# Sidebar ตั้งค่า (ปรับ Default ให้เข้ากับแผน 10K → 250K)
+# Sidebar
 st.sidebar.header("⚙️ ตั้งค่าตัวแทน")
 capital = st.sidebar.number_input("💰 ทุนปัจจุบัน (บาท)", value=10000, step=100)
 base_unit = st.sidebar.number_input("Base Unit", value=200, step=50)
 daily_target = st.sidebar.number_input("Daily Target Win", value=3000, step=100)
 daily_stop = st.sidebar.number_input("Daily Stop Loss", value=-1000, step=100)
+session_time_limit = st.sidebar.number_input("จำกัดเวลาเซสชั่น (นาที)", value=60, step=5)
 
 system_choice = st.sidebar.radio("เลือกสูตรเดินเงิน", 
                                  ["Paroli 3 ขั้น (1-2-4)", "1-3-2-6"])
@@ -26,14 +27,11 @@ if 'history' not in st.session_state:
     st.session_state.history = []
 if 'consecutive_loss' not in st.session_state:
     st.session_state.consecutive_loss = 0
-if 'capital_history' not in st.session_state:
-    st.session_state.capital_history = [capital]  # สำหรับกราฟ
+if 'session_start_time' not in st.session_state:
+    st.session_state.session_start_time = datetime.now()
 
-if 'system' not in st.session_state:
-    st.session_state.system = system_choice
-
-# เปลี่ยนสูตรเมื่อเลือกใหม่
-if system_choice != st.session_state.system:
+# เปลี่ยนสูตร
+if 'system' not in st.session_state or system_choice != st.session_state.system:
     st.session_state.step = 0
     st.session_state.system = system_choice
 
@@ -47,6 +45,11 @@ else:
     max_steps = 4
     system_name = "1-3-2-6"
 
+# คำนวณเวลาเซสชั่น
+elapsed_time = datetime.now() - st.session_state.session_start_time
+minutes_passed = int(elapsed_time.total_seconds() / 60)
+time_remaining = max(0, session_time_limit - minutes_passed)
+
 # แสดงสถานะหลัก
 col1, col2, col3, col4 = st.columns(4)
 with col1:
@@ -57,11 +60,30 @@ with col3:
     st.metric("สูตรที่ใช้", system_name)
 with col4:
     st.metric("แพ้ติด", f"{st.session_state.consecutive_loss} ไม้", 
-              delta=None if st.session_state.consecutive_loss < 3 else "⚠️ อันตราย")
+              delta=None if st.session_state.consecutive_loss < 3 else "⚠️")
 
-# คำนวณเดิมพัน
+# แสดงนาฬิกาจับเวลา
+time_col1, time_col2 = st.columns([3, 1])
+with time_col1:
+    st.progress(min(minutes_passed / session_time_limit, 1.0))
+with time_col2:
+    st.write(f"⏱️ {time_remaining} นาที")
+
+if time_remaining <= 5 and time_remaining > 0:
+    st.warning(f"⚠️ เหลือเวลาเพียง {time_remaining} นาที! เตรียมตัวหยุดเซสชั่น")
+elif time_remaining <= 0:
+    st.error("⏰ ครบเวลา 1 ชั่วโมงแล้ว! แนะนำให้หยุดเล่นทันที")
+
+# คำนวณเดิมพัน + แสดงสีตามสถานะเซต
+is_set_complete = st.session_state.step == 0 and len(st.session_state.history) > 0
+
 bet_amount = base_unit * sequence[st.session_state.step]
-st.success(f"🔥 Agent แนะนำแทง **{bet_amount:,} บาท** (Banker) - ขั้นที่ {st.session_state.step + 1}")
+
+if is_set_complete:
+    st.success(f"🎉 ครบเซตแล้ว! กำไรดีมาก → รีเซ็ตอัตโนมัติ")
+    st.balloons()
+else:
+    st.success(f"🔥 Agent แนะนำแทง **{bet_amount:,} บาท** (Banker) - ขั้นที่ {st.session_state.step + 1}")
 
 # ปุ่มผลลัพธ์
 colA, colB = st.columns(2)
@@ -82,8 +104,6 @@ if colA.button("✅ ชนะ (W)", use_container_width=True, type="primary"):
     
     st.session_state.step += 1
     if st.session_state.step >= max_steps:
-        st.balloons()
-        st.success(f"🎉 ครบ {max_steps} ไม้! กำไรดีมาก → รีเซ็ต")
         st.session_state.step = 0
 
 if colB.button("❌ แพ้ (L)", use_container_width=True, type="secondary"):
@@ -103,62 +123,49 @@ if colB.button("❌ แพ้ (L)", use_container_width=True, type="secondary"):
     
     st.session_state.step = 0
 
-# การแจ้งเตือนเมื่อแพ้ 3 ไม้ติด
+# การแจ้งเตือน
 if st.session_state.consecutive_loss >= 3:
-    st.warning("⚠️ แพ้ติด 3 ไม้แล้ว! แนะนำให้หยุดเล่นวันนี้ หรือเปลี่ยนห้องโต๊ะทันที")
-    st.info("💡 ลองทำ Urge Surfing หรือ Box Breathing 5 นาทีก่อนเล่นต่อ")
+    st.warning("⚠️ แพ้ติด 3 ไม้แล้ว! แนะนำให้หยุดเล่น หรือเปลี่ยนห้องโต๊ะทันที")
 
-# เตือน Target / Stop Loss
 if st.session_state.daily_profit >= daily_target:
-    st.error("🚨 ถึง Daily Target แล้ว! หยุดเล่น + Cash Out ทันที")
+    st.error("🚨 ถึง Daily Target แล้ว! หยุด + Cash Out ทันที")
 elif st.session_state.daily_profit <= daily_stop:
-    st.error("🚨 ถึง Stop Loss แล้ว! ปิดเว็บและหยุดเดี๋ยวนี้")
+    st.error("🚨 ถึง Stop Loss แล้ว! หยุดเดี๋ยวนี้")
 
-# ==================== กราฟทุนสะสม ====================
-if len(st.session_state.history) > 0:
-    # สร้างข้อมูลสำหรับกราฟ
-    df_graph = pd.DataFrame(st.session_state.history)
-    df_graph['ทุนสะสม'] = capital - df_graph['กำไร'].cumsum() + df_graph['กำไร'].cumsum()
-    
-    fig = px.line(df_graph, x=df_graph.index, y='ทุนสะสม', 
-                  title="กราฟทุนสะสมวันนี้",
-                  labels={"index": "ลำดับไม้", "ทุนสะสม": "ทุน (บาท)"},
-                  markers=True)
-    fig.update_layout(height=400)
-    st.plotly_chart(fig, use_container_width=True)
-
-# ==================== Mindfulness Button ====================
+# ==================== Mindfulness ====================
 st.subheader("🧘 Mindfulness")
-if st.button("🌀 ทำ Urge Surfing (เมื่ออยากเล่นต่อ)"):
-    st.info(""" 
-    **Urge Surfing Technique**  
-    1. นึกถึงความอยากเล่นเป็น “คลื่น”  
-    2. หายใจเข้าลึก ๆ ตามจังหวะคลื่น  
-    3. รู้ว่าคลื่นจะขึ้นและลงเอง  
-    4. ไม่ต้องต่อต้าน แค่ “นั่งบนกระดานเซิร์ฟ”  
-    → ความอยากจะลดลงภายใน 1-2 นาที
-    """)
+col_m1, col_m2 = st.columns(2)
+with col_m1:
+    if st.button("🌀 Urge Surfing"):
+        st.info("**Urge Surfing**: นึกความอยากเป็นคลื่น → หายใจตามคลื่น → ไม่ต้องสู้ → คลื่นจะลงเอง")
+with col_m2:
+    if st.button("🧠 Box Breathing"):
+        st.info("**Box Breathing**: เข้า 4 วินาที → กลั้น 4 → ออก 4 → กลั้น 4 (ทำ 8-10 รอบ)")
 
-if st.button("🧠 ทำ Box Breathing (สงบสมอง)"):
-    st.info("""
-    **Box Breathing**  
-    หายใจเข้า 4 วินาที → กลั้น 4 วินาที → หายใจออก 4 วินาที → กลั้น 4 วินาที  
-    ทำซ้ำ 6-10 รอบ จะช่วยลดความโลภและ tilt ได้ดี
-    """)
+# ==================== กราฟทุนสะสม (ย้ายไปล่างสุด) ====================
+if st.session_state.history:
+    df = pd.DataFrame(st.session_state.history)
+    # คำนวณทุนสะสม
+    cumulative = [capital]
+    for i in range(len(df)):
+        cumulative.append(cumulative[-1] + df.iloc[i]['กำไร'])
+    df['ทุนสะสม'] = cumulative[1:]
+    
+    st.subheader("📈 กราฟทุนสะสมวันนี้")
+    st.line_chart(df.set_index('เวลา')['ทุนสะสม'])
 
 # ประวัติการเล่น
 if st.session_state.history:
-    df = pd.DataFrame(st.session_state.history)
     st.subheader("📊 ประวัติการเล่นวันนี้")
-    st.dataframe(df, use_container_width=True)
+    st.dataframe(pd.DataFrame(st.session_state.history), use_container_width=True)
 
-# รีเซ็ตวันใหม่
-if st.button("🔄 รีเซ็ตวันใหม่ (เริ่มเซสชั่นใหม่)"):
+# รีเซ็ตเซสชั่น
+if st.button("🔄 รีเซ็ตเซสชั่นใหม่ (เริ่มเวลาใหม่)"):
     st.session_state.daily_profit = 0
     st.session_state.step = 0
     st.session_state.consecutive_loss = 0
     st.session_state.history = []
-    st.session_state.capital_history = [capital]
-    st.success("รีเซ็ตวันใหม่เรียบร้อย!")
+    st.session_state.session_start_time = datetime.now()
+    st.success("รีเซ็ตเซสชั่นใหม่เรียบร้อย! เวลาเริ่มนับใหม่")
 
-st.caption("💡 ใช้ร่วมกับตารางชีวิตและแผน 10K → 250K ที่เราคุยกันนะครับ")
+st.caption("💡 แนะนำให้เล่นไม่เกิน 60 นาทีต่อเซสชั่น + ใช้ร่วมกับตารางชีวิต")
