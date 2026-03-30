@@ -75,32 +75,35 @@ is_set_complete = (st.session_state.step == 0) and len(st.session_state.history)
 
 if is_set_complete:
     st.success(f"🎉 ครบเซตแล้ว! (ครบ {max_steps} ไม้)")
-    st.balloons()
 else:
     st.success(f"🔥 Agent แนะนำแทง **{bet_amount:,} บาท** (Banker) - ขั้นที่ {st.session_state.step + 1}")
 
 # ปุ่มเล่น
 colA, colB = st.columns(2)
+
 if colA.button("✅ ชนะ (W)", use_container_width=True, type="primary"):
     bet = base_unit * sequence[st.session_state.step]
     capital += bet
     st.session_state.daily_profit += bet
     st.session_state.consecutive_loss = 0
     
+    current_step = st.session_state.step + 1
+    is_completing_set = (current_step == max_steps)
+    
     st.session_state.history.append({
         "เวลา": datetime.now().strftime("%H:%M"),
         "สูตร": system_name,
-        "ขั้น": st.session_state.step + 1,
+        "ขั้น": current_step,
         "แทง": bet,
         "ผล": "ชนะ",
         "กำไร": bet,
-        "ครบเซต": (st.session_state.step + 1 == max_steps)
+        "ครบเซต": is_completing_set
     })
     
     st.session_state.step += 1
     if st.session_state.step >= max_steps:
         st.session_state.step = 0
-        st.balloons()
+        st.balloons()          # ลูกโป่งขึ้นเฉพาะตอนครบเซต
 
 if colB.button("❌ แพ้ (L)", use_container_width=True, type="secondary"):
     bet = base_unit * sequence[st.session_state.step]
@@ -119,8 +122,9 @@ if colB.button("❌ แพ้ (L)", use_container_width=True, type="secondary"):
     })
     
     st.session_state.step = 0
+    # ไม่มี balloons เมื่อแพ้
 
-# ==================== แมวโกรธ (แก้บั๊กแล้ว) ====================
+# ==================== แมวโกรธ ====================
 if st.session_state.daily_profit <= daily_stop or st.session_state.consecutive_loss >= 3:
     st.markdown("""
     <div style="text-align: center; font-size: 70px; animation: float 1.8s ease-in-out infinite;">
@@ -178,7 +182,7 @@ if st.session_state.history:
     st.subheader("📈 กราฟทุนสะสมวันนี้")
     st.line_chart(df_graph.set_index('เวลา')['ทุนสะสม'], use_container_width=True)
 
-# รีเซ็ต
+# รีเซ็ตเซสชั่น
 if st.button("🔄 รีเซ็ตเซสชั่นใหม่"):
     st.session_state.daily_profit = 0
     st.session_state.step = 0
