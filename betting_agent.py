@@ -60,22 +60,21 @@ with col4:
     st.metric("แพ้ติด", f"{st.session_state.consecutive_loss} ไม้", 
               delta=None if st.session_state.consecutive_loss < 3 else "⚠️")
 
-# นาฬิกาจับเวลา
+# นาฬิกา
 st.progress(min(minutes_passed / session_time_limit, 1.0))
-st.write(f"⏱️ เวลาเซสชั่นที่ใช้ไป: **{minutes_passed} นาที** | เหลือ: **{time_remaining} นาที**")
+st.write(f"⏱️ เวลาที่ใช้ไป: **{minutes_passed} นาที** | เหลือ: **{time_remaining} นาที**")
 
 if time_remaining <= 5 and time_remaining > 0:
-    st.warning(f"⚠️ เหลือเวลาเพียง {time_remaining} นาที! เตรียมหยุดเซสชั่น")
+    st.warning(f"⚠️ เหลือเวลาเพียง {time_remaining} นาที!")
 elif time_remaining <= 0:
     st.error("⏰ ครบเวลา 60 นาทีแล้ว! แนะนำให้หยุดเล่นทันที")
 
-# แสดงเดิมพัน + สถานะเซต
+# แสดงเดิมพัน
 bet_amount = base_unit * sequence[st.session_state.step]
 is_set_complete = (st.session_state.step == 0) and len(st.session_state.history) > 0
 
 if is_set_complete:
-    st.success(f"🎉 ครบเซตแล้ว! (ครบ {max_steps} ไม้) → รีเซ็ต")
-    st.balloons()
+    st.success(f"🎉 ครบเซตแล้ว! (ครบ {max_steps} ไม้)")
 else:
     st.success(f"🔥 Agent แนะนำแทง **{bet_amount:,} บาท** (Banker) - ขั้นที่ {st.session_state.step + 1}")
 
@@ -94,12 +93,14 @@ if colA.button("✅ ชนะ (W)", use_container_width=True, type="primary"):
         "แทง": bet,
         "ผล": "ชนะ",
         "กำไร": bet,
-        "ครบเซต": st.session_state.step + 1 == max_steps
+        "ครบเซต": (st.session_state.step + 1 == max_steps)
     })
     
     st.session_state.step += 1
     if st.session_state.step >= max_steps:
         st.session_state.step = 0
+        # ลูกโป่งขึ้นเฉพาะเมื่อครบเซตจริง ๆ
+        st.balloons()
 
 if colB.button("❌ แพ้ (L)", use_container_width=True, type="secondary"):
     bet = base_unit * sequence[st.session_state.step]
@@ -121,14 +122,14 @@ if colB.button("❌ แพ้ (L)", use_container_width=True, type="secondary"):
 
 # การแจ้งเตือน
 if st.session_state.consecutive_loss >= 3:
-    st.warning("⚠️ แพ้ติด 3 ไม้แล้ว! แนะนำให้หยุดหรือเปลี่ยนห้องโต๊ะ")
+    st.warning("⚠️ แพ้ติด 3 ไม้แล้ว! แนะนำให้หยุดเล่นหรือเปลี่ยนห้องโต๊ะ")
 
 if st.session_state.daily_profit >= daily_target:
     st.error("🚨 ถึง Daily Target แล้ว! หยุด + Cash Out ทันที")
 elif st.session_state.daily_profit <= daily_stop:
     st.error("🚨 ถึง Stop Loss แล้ว! หยุดเดี๋ยวนี้")
 
-# ==================== Mindfulness ====================
+# Mindfulness
 st.subheader("🧘 Mindfulness")
 col_m1, col_m2 = st.columns(2)
 with col_m1:
@@ -138,23 +139,24 @@ with col_m2:
     if st.button("🧠 Box Breathing"):
         st.info("**Box Breathing**: เข้า 4 วินาที → กลั้น 4 → ออก 4 → กลั้น 4 (ทำ 8-10 รอบ)")
 
-# ==================== ประวัติ + แถบสี ====================
+# ==================== ตารางประวัติ + แถบสี ====================
 if st.session_state.history:
     df = pd.DataFrame(st.session_state.history)
     
-    # ฟังก์ชันสีสำหรับทั้งแถว
     def highlight_row(row):
-        if row['ครบเซต']:
-            return ['background-color: #90EE90'] * len(row)  # เขียวอ่อน
+        if row['ครบเซต'] == True:
+            return ['background-color: #90EE90'] * len(row)   # เขียว - ครบเซต
+        elif row['ผล'] == "แพ้":
+            return ['background-color: #FFB3B3'] * len(row)   # แดง - แพ้
         else:
-            return ['background-color: #FFB3B3'] * len(row)   # แดงอ่อน
+            return ['background-color: #FFF9C4'] * len(row)   # เหลือง - ยังไม่ครบเซต
     
     styled_df = df.style.apply(highlight_row, axis=1)
     
     st.subheader("📊 ประวัติการเล่นวันนี้")
     st.dataframe(styled_df, use_container_width=True)
 
-# ==================== กราฟทุนสะสม (ย้ายไปล่างสุด) ====================
+# ==================== กราฟทุนสะสม (อยู่ล่างสุด) ====================
 if st.session_state.history:
     df_graph = pd.DataFrame(st.session_state.history)
     cumulative = [capital]
@@ -166,13 +168,13 @@ if st.session_state.history:
     st.subheader("📈 กราฟทุนสะสมวันนี้")
     st.line_chart(df_graph.set_index('เวลา')['ทุนสะสม'], use_container_width=True)
 
-# ปุ่มรีเซ็ต
+# รีเซ็ตเซสชั่น
 if st.button("🔄 รีเซ็ตเซสชั่นใหม่"):
     st.session_state.daily_profit = 0
     st.session_state.step = 0
     st.session_state.consecutive_loss = 0
     st.session_state.history = []
     st.session_state.session_start_time = datetime.now()
-    st.success("รีเซ็ตเซสชั่นใหม่เรียบร้อย! เวลาเริ่มนับใหม่")
+    st.success("รีเซ็ตเซสชั่นใหม่เรียบร้อย!")
 
-st.caption("💡 เล่นไม่เกิน 60 นาทีต่อเซสชั่น + ใช้ร่วมกับตารางชีวิต")
+st.caption("💡 แนะนำเล่นไม่เกิน 60 นาทีต่อเซสชั่น")
