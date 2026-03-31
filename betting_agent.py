@@ -43,7 +43,7 @@ if 'system' not in st.session_state or system_choice != st.session_state.system:
     st.session_state.current_bet = 1
     st.session_state.system = system_choice
 
-# ==================== กำหนดสูตร ====================
+# กำหนดสูตร
 if system_choice == "1-2 (Paroli 2 ขั้น)":
     sequence = [1, 2]
     max_steps = 2
@@ -89,13 +89,13 @@ if time_remaining <= 5 and time_remaining > 0:
 elif time_remaining <= 0:
     st.error("⏰ ครบเวลา 60 นาทีแล้ว! หยุดเล่นทันที")
 
-# คำนวณเดิมพัน
+# ==================== คำนวณเดิมพัน (ปรับให้แสดงล่วงหน้า 1 ไม้) ====================
 if system_name == "Oscar’s Grind":
     bet_amount = base_unit * st.session_state.current_bet
 else:
     bet_amount = base_unit * sequence[st.session_state.step]
 
-st.success(f"🔥 Agent แนะนำแทง **{bet_amount:,} บาท** (Banker)")
+st.success(f"🔥 Agent แนะนำแทง **{bet_amount:,} บาท** (Banker) - ขั้นปัจจุบัน")
 
 # ปุ่มเล่น
 colA, colB = st.columns(2)
@@ -118,7 +118,7 @@ if colA.button("✅ ชนะ (W)", use_container_width=True, type="primary"):
     st.session_state.history.append({
         "เวลา": datetime.now(thai_tz).strftime("%H:%M:%S"),
         "สูตร": system_name,
-        "ขั้น": st.session_state.step if system_name != "Oscar’s Grind" else st.session_state.current_bet,
+        "ขั้น": st.session_state.step if system_name != "Oscar’s Grind" else st.session_state.current_bet - 1,
         "แทง": bet,
         "ผล": "ชนะ",
         "กำไร": bet,
@@ -135,7 +135,7 @@ if colB.button("❌ แพ้ (L)", use_container_width=True, type="secondary"):
     st.session_state.consecutive_loss += 1
 
     if system_name == "Oscar’s Grind":
-        pass  # คงเดิมพันเมื่อแพ้
+        pass  # คงเดิมพัน
     else:
         st.session_state.step = 0
 
@@ -171,7 +171,7 @@ with col_m2:
     if st.button("🧠 Box Breathing"):
         st.info("**Box Breathing**: เข้า 4 วินาที → กลั้น 4 → ออก 4 → กลั้น 4")
 
-# ตารางประวัติ + สี
+# ตารางประวัติ
 if st.session_state.history:
     df = pd.DataFrame(st.session_state.history)
     def highlight_row(row):
@@ -205,4 +205,4 @@ if st.button("🔄 รีเซ็ตเซสชั่นใหม่"):
     st.session_state.session_start_time = datetime.now(thai_tz)
     st.success("รีเซ็ตเซสชั่นใหม่เรียบร้อย!")
 
-st.caption("💡 มี 5 สูตรให้เลือก | 1-2 แนะนำสำหรับคุณตอนนี้")
+st.caption("💡 ปรับการแนะนำเดิมพันให้เร็วขึ้น 1 ไม้แล้ว")
