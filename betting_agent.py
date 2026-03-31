@@ -18,7 +18,11 @@ daily_stop = st.sidebar.number_input("Daily Stop Loss", value=-1000, step=100)
 session_time_limit = st.sidebar.number_input("จำกัดเวลาเซสชั่น (นาที)", value=60, step=5)
 
 system_choice = st.sidebar.radio("เลือกสูตรเดินเงิน", 
-                                 ["1-2 (Paroli 2 ขั้น)", "1-3", "Oscar’s Grind"])
+    ["1-2 (Paroli 2 ขั้น)", 
+     "1-3", 
+     "Paroli 3 ขั้น (1-2-4)", 
+     "1-3-2-6", 
+     "Oscar’s Grind"])
 
 # Session state
 if 'step' not in st.session_state:
@@ -48,9 +52,17 @@ elif system_choice == "1-3":
     sequence = [1, 3]
     max_steps = 2
     system_name = "1-3"
+elif system_choice == "Paroli 3 ขั้น (1-2-4)":
+    sequence = [1, 2, 4]
+    max_steps = 3
+    system_name = "Paroli 3 ขั้น"
+elif system_choice == "1-3-2-6":
+    sequence = [1, 3, 2, 6]
+    max_steps = 4
+    system_name = "1-3-2-6"
 else:  # Oscar’s Grind
     system_name = "Oscar’s Grind"
-    max_steps = 999  # ไม่มีขีดจำกัด
+    max_steps = 999
 
 # คำนวณเวลา
 elapsed = datetime.now(thai_tz) - st.session_state.session_start_time
@@ -123,8 +135,7 @@ if colB.button("❌ แพ้ (L)", use_container_width=True, type="secondary"):
     st.session_state.consecutive_loss += 1
 
     if system_name == "Oscar’s Grind":
-        # คงเดิมพันเมื่อแพ้
-        pass
+        pass  # คงเดิมพันเมื่อแพ้
     else:
         st.session_state.step = 0
 
@@ -138,7 +149,7 @@ if colB.button("❌ แพ้ (L)", use_container_width=True, type="secondary"):
         "ครบเซต": False
     })
 
-# ==================== แมวโกรธ ====================
+# แมวโกรธ
 if st.session_state.daily_profit <= daily_stop or st.session_state.consecutive_loss >= 3:
     st.markdown("""
     <div style="text-align: center; font-size: 70px; animation: float 1.8s ease-in-out infinite;">
@@ -160,11 +171,11 @@ with col_m2:
     if st.button("🧠 Box Breathing"):
         st.info("**Box Breathing**: เข้า 4 วินาที → กลั้น 4 → ออก 4 → กลั้น 4")
 
-# ตารางประวัติ
+# ตารางประวัติ + สี
 if st.session_state.history:
     df = pd.DataFrame(st.session_state.history)
     def highlight_row(row):
-        if row['ครบเซต'] == True:
+        if row.get('ครบเซต') == True:
             return ['background-color: #90EE90; color: black'] * len(row)
         elif row['ผล'] == "แพ้":
             return ['background-color: #FFCCCC; color: black'] * len(row)
@@ -194,4 +205,4 @@ if st.button("🔄 รีเซ็ตเซสชั่นใหม่"):
     st.session_state.session_start_time = datetime.now(thai_tz)
     st.success("รีเซ็ตเซสชั่นใหม่เรียบร้อย!")
 
-st.caption("💡 เลือกสูตรได้ 3 แบบ | 1-2 แนะนำสำหรับคุณตอนนี้")
+st.caption("💡 มี 5 สูตรให้เลือก | 1-2 แนะนำสำหรับคุณตอนนี้")
