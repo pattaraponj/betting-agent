@@ -33,7 +33,7 @@ if 'history' not in st.session_state:
     st.session_state.history = []
 if 'consecutive_loss' not in st.session_state:
     st.session_state.consecutive_loss = 0
-if 'current_bet' not in st.session_state:   # สำหรับ Oscar’s Grind
+if 'current_bet' not in st.session_state:
     st.session_state.current_bet = 1
 if 'session_start_time' not in st.session_state:
     st.session_state.session_start_time = datetime.now(thai_tz)
@@ -89,7 +89,7 @@ if time_remaining <= 5 and time_remaining > 0:
 elif time_remaining <= 0:
     st.error("⏰ ครบเวลา 60 นาทีแล้ว! หยุดเล่นทันที")
 
-# ==================== คำนวณเดิมพัน (ปรับให้แสดงล่วงหน้า 1 ไม้) ====================
+# ==================== คำนวณเดิมพัน (ปรับให้แสดงปัจจุบันทันที) ====================
 if system_name == "Oscar’s Grind":
     bet_amount = base_unit * st.session_state.current_bet
 else:
@@ -108,13 +108,12 @@ if colA.button("✅ ชนะ (W)", use_container_width=True, type="primary"):
 
     if system_name == "Oscar’s Grind":
         st.session_state.current_bet += 1
-        is_complete = False
     else:
         st.session_state.step += 1
-        is_complete = (st.session_state.step >= max_steps)
-        if is_complete:
+        if st.session_state.step >= max_steps:
             st.session_state.step = 0
 
+    # บันทึกประวัติ
     st.session_state.history.append({
         "เวลา": datetime.now(thai_tz).strftime("%H:%M:%S"),
         "สูตร": system_name,
@@ -122,11 +121,13 @@ if colA.button("✅ ชนะ (W)", use_container_width=True, type="primary"):
         "แทง": bet,
         "ผล": "ชนะ",
         "กำไร": bet,
-        "ครบเซต": is_complete
+        "ครบเซต": (st.session_state.step == 0) if system_name != "Oscar’s Grind" else False
     })
 
-    if is_complete and system_name != "Oscar’s Grind":
+    if (st.session_state.step == 0) and system_name != "Oscar’s Grind":
         st.balloons()
+
+    st.rerun()   # ← เพิ่มบรรทัดนี้เพื่อรีเฟรชทันที
 
 if colB.button("❌ แพ้ (L)", use_container_width=True, type="secondary"):
     bet = bet_amount
@@ -135,7 +136,7 @@ if colB.button("❌ แพ้ (L)", use_container_width=True, type="secondary"):
     st.session_state.consecutive_loss += 1
 
     if system_name == "Oscar’s Grind":
-        pass  # คงเดิมพัน
+        pass
     else:
         st.session_state.step = 0
 
@@ -148,6 +149,8 @@ if colB.button("❌ แพ้ (L)", use_container_width=True, type="secondary"):
         "กำไร": -bet,
         "ครบเซต": False
     })
+
+    st.rerun()   # ← เพิ่มบรรทัดนี้เพื่อรีเฟรชทันที
 
 # แมวโกรธ
 if st.session_state.daily_profit <= daily_stop or st.session_state.consecutive_loss >= 3:
@@ -205,4 +208,4 @@ if st.button("🔄 รีเซ็ตเซสชั่นใหม่"):
     st.session_state.session_start_time = datetime.now(thai_tz)
     st.success("รีเซ็ตเซสชั่นใหม่เรียบร้อย!")
 
-st.caption("💡 ปรับการแนะนำเดิมพันให้เร็วขึ้น 1 ไม้แล้ว")
+st.caption("💡 ปรับการแสดงเดิมพันให้เร็วขึ้นแล้ว (ใช้ st.rerun)")
