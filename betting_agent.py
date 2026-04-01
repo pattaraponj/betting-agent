@@ -1,18 +1,14 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
-import pytz
 
 st.set_page_config(page_title="AI Betting Agent - พี่เอก", layout="centered", page_icon="🤖")
 st.title("🤖 AI Betting Agent")
-st.caption("พี่เอกดูแล | แผน 10,000 → 250,000 | Banker 100% | เวลาไทย UTC+7")
-
-thai_tz = pytz.timezone('Asia/Bangkok')
+st.caption("พี่เอกดูแล | แผน 10,000 → 250,000 | Banker 100%")
 
 # Sidebar
 st.sidebar.header("⚙️ ตั้งค่าตัวแทน")
-initial_capital = st.sidebar.number_input("💰 ทุนเริ่มต้นวันนี้ (บาท)", value=10000, step=100)
-capital = initial_capital + st.session_state.get('daily_profit', 0) if 'daily_profit' in st.session_state else initial_capital
+capital = st.sidebar.number_input("💰 ทุนปัจจุบัน (บาท)", value=10000, step=100)
 base_unit = st.sidebar.number_input("Base Unit", value=200, step=50)
 daily_target = st.sidebar.number_input("Daily Target Win", value=3000, step=100)
 daily_stop = st.sidebar.number_input("Daily Stop Loss", value=-1000, step=100)
@@ -39,7 +35,7 @@ if 'consecutive_loss' not in st.session_state:
 if 'current_bet' not in st.session_state:
     st.session_state.current_bet = 1
 if 'session_start_time' not in st.session_state:
-    st.session_state.session_start_time = datetime.now(thai_tz)
+    st.session_state.session_start_time = datetime.now()
 
 if 'system' not in st.session_state or system_choice != st.session_state.system:
     st.session_state.step = 0
@@ -75,28 +71,19 @@ else:  # Oscar’s Grind
     system_name = "Oscar’s Grind"
     max_steps = 999
 
-# คำนวณเวลา
-elapsed = datetime.now(thai_tz) - st.session_state.session_start_time
+# คำนวณเวลา (แบบง่าย ไม่ใช้ pytz)
+elapsed = datetime.now() - st.session_state.session_start_time
 minutes_passed = int(elapsed.total_seconds() / 60)
 time_remaining = max(0, session_time_limit - minutes_passed)
 
-# แสดงสถานะหลัก (ปรับใหม่ตามที่คุณขอ)
+# แสดงสถานะหลัก
 col1, col2, col3 = st.columns(3)
 with col1:
     st.metric("💰 ทุนคงเหลือ", f"{capital:,} บาท")
 with col2:
     st.metric("📈 กำไรวันนี้", f"{st.session_state.daily_profit:+,} บาท")
 with col3:
-    st.metric("📊 ผลรวมทุน + กำไร", f"{initial_capital + st.session_state.daily_profit:,} บาท", 
-              delta=f"{st.session_state.daily_profit:+,} บาท")
-
-# แสดงสูตรและแพ้ติด
-col4, col5 = st.columns(2)
-with col4:
-    st.metric("สูตรที่ใช้", system_name)
-with col5:
-    st.metric("แพ้ติด", f"{st.session_state.consecutive_loss} ไม้", 
-              delta=None if st.session_state.consecutive_loss < 3 else "⚠️")
+    st.metric("📊 ผลรวมทุน + กำไร", f"{initial_capital + st.session_state.daily_profit:,} บาท" if 'initial_capital' in locals() else f"{capital:,} บาท")
 
 # นาฬิกา
 st.progress(min(minutes_passed / session_time_limit, 1.0))
@@ -115,7 +102,7 @@ else:
 
 st.success(f"🔥 Agent แนะนำแทง **{bet_amount:,} บาท** (Banker) - ขั้นปัจจุบัน")
 
-# ปุ่มเล่น
+# ปุ่มเล่น (เหมือนเดิม)
 colA, colB = st.columns(2)
 
 if colA.button("✅ ชนะ (W)", use_container_width=True, type="primary"):
@@ -132,7 +119,7 @@ if colA.button("✅ ชนะ (W)", use_container_width=True, type="primary"):
             st.session_state.step = 0
 
     st.session_state.history.append({
-        "เวลา": datetime.now(thai_tz).strftime("%H:%M:%S"),
+        "เวลา": datetime.now().strftime("%H:%M:%S"),
         "สูตร": system_name,
         "ขั้น": st.session_state.step if system_name != "Oscar’s Grind" else st.session_state.current_bet - 1,
         "แทง": bet,
@@ -158,7 +145,7 @@ if colB.button("❌ แพ้ (L)", use_container_width=True, type="secondary"):
         st.session_state.step = 0
 
     st.session_state.history.append({
-        "เวลา": datetime.now(thai_tz).strftime("%H:%M:%S"),
+        "เวลา": datetime.now().strftime("%H:%M:%S"),
         "สูตร": system_name,
         "ขั้น": st.session_state.step if system_name != "Oscar’s Grind" else st.session_state.current_bet,
         "แทง": bet,
@@ -191,7 +178,7 @@ with col_m2:
     if st.button("🧠 Box Breathing"):
         st.info("**Box Breathing**: เข้า 4 วินาที → กลั้น 4 → ออก 4 → กลั้น 4")
 
-# ตารางประวัติ
+# ตารางประวัติ + สี
 if st.session_state.history:
     df = pd.DataFrame(st.session_state.history)
     def highlight_row(row):
@@ -208,7 +195,7 @@ if st.session_state.history:
 # กราฟทุนสะสม
 if st.session_state.history:
     df_graph = pd.DataFrame(st.session_state.history)
-    cumulative = [initial_capital]
+    cumulative = [capital]
     for gain in df_graph['กำไร']:
         cumulative.append(cumulative[-1] + gain)
     df_graph['ทุนสะสม'] = cumulative[1:]
@@ -222,7 +209,7 @@ if st.button("🔄 รีเซ็ตเซสชั่นใหม่"):
     st.session_state.consecutive_loss = 0
     st.session_state.current_bet = 1
     st.session_state.history = []
-    st.session_state.session_start_time = datetime.now(thai_tz)
+    st.session_state.session_start_time = datetime.now()
     st.success("รีเซ็ตเซสชั่นใหม่เรียบร้อย!")
 
-st.caption("💡 แสดง ทุนคงเหลือ | กำไรวันนี้ | ผลรวมทุน+กำไร แล้ว")
+st.caption("💡 ปรับให้ไม่ใช้ pytz แล้ว | มี 7 สูตรให้เลือก")
